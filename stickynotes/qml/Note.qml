@@ -17,6 +17,7 @@ Window {
     property bool ready: false
 
     visible: win.noteVisible
+    opacity: win.noteMode === "desktop" ? 0.92 : 1.0
     title: "StickyNote"
     color: "transparent"
     flags: {
@@ -145,14 +146,43 @@ Window {
     readonly property color ink: "#1c1b1f"
 
     Rectangle {
+        id: bgRect
         anchors.fill: parent
         color: win.noteColor
 
+        HoverHandler {
+            id: windowHover
+            objectName: "windowHover"
+        }
+
+        Rectangle {
+            id: topAccentLine
+            objectName: "topAccentLine"
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 2
+            color: Qt.darker(win.noteColor, 1.4)
+            visible: win.noteMode === "top"
+            z: 10
+        }
+
         Rectangle {
             id: bar
+            objectName: "headerBar"
             width: parent.width
             height: 32
             color: Qt.darker(win.noteColor, 1.08)
+            opacity: (windowHover.hovered || barHover.hovered || addMa.containsMouse || modeMa.containsMouse || menuMa.containsMouse || closeMa.containsMouse || addMa.pressed || modeMa.pressed || menuMa.pressed || closeMa.pressed || menuPopup.visible) ? 1.0 : 0.25
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+
+            HoverHandler {
+                id: barHover
+                objectName: "barHover"
+            }
 
             Row {
                 id: leftRow
@@ -293,6 +323,7 @@ Window {
 
             Popup {
                 id: menuPopup
+                objectName: "menuPopup"
                 x: parent.width - width - 8
                 y: parent.height + 4
                 padding: 10
@@ -410,13 +441,59 @@ Window {
             }
         }
 
-        MouseArea {
+        Item {
+            id: resizeGrip
+            objectName: "resizeGrip"
             width: 20
             height: 20
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            cursorShape: Qt.SizeFDiagCursor
-            onPressed: win.startSystemResize(Qt.RightEdge | Qt.BottomEdge)
+            z: 5
+            opacity: (gripHover.hovered || resizeMa.containsMouse) ? 0.85 : 0.35
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+
+            HoverHandler {
+                id: gripHover
+                objectName: "gripHover"
+            }
+
+            // 3 subtle tactile dots
+            Rectangle {
+                width: 3
+                height: 3
+                radius: 1.5
+                color: win.ink
+                x: 13
+                y: 13
+            }
+            Rectangle {
+                width: 3
+                height: 3
+                radius: 1.5
+                color: win.ink
+                x: 13
+                y: 8
+            }
+            Rectangle {
+                width: 3
+                height: 3
+                radius: 1.5
+                color: win.ink
+                x: 8
+                y: 13
+            }
+
+            MouseArea {
+                id: resizeMa
+                objectName: "resizeMouseArea"
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.SizeFDiagCursor
+                onPressed: win.startSystemResize(Qt.RightEdge | Qt.BottomEdge)
+            }
         }
     }
 }

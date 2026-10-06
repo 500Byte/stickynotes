@@ -1,6 +1,6 @@
 import pytest
-from PyQt6.QtCore import Qt, QObject
-from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtCore import QEvent, QObject, QPointF, Qt
+from PyQt6.QtGui import QGuiApplication, QMouseEvent
 from PyQt6.QtTest import QTest
 
 from stickynotes.main import build_engine
@@ -394,5 +394,143 @@ def test_shortcuts_trigger_via_key_clicks(qapp, tmp_path, run_engine):
     QTest.keyClick(win0, Qt.Key.Key_N, Qt.KeyboardModifier.ControlModifier)
     QTest.qWait(50)
     assert m.rowCount() == 2
+
+
+def test_hover_reveal_toolbar(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    assert win0 is not None
+    win0.show()
+    QTest.qWait(50)
+
+    bar = win0.findChild(QObject, "headerBar")
+    assert bar is not None
+    assert bar.property("opacity") == pytest.approx(0.25, abs=0.02)
+
+    # Hover inside window reveals toolbar
+    pos_inside = QPointF(win0.width() / 2, win0.height() / 2)
+    ev_in = QMouseEvent(
+        QEvent.Type.MouseMove, pos_inside, pos_inside,
+        Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_in)
+    QTest.qWait(200)
+    assert bar.property("opacity") == pytest.approx(1.0, abs=0.02)
+
+    # Move mouse outside hides toolbar
+    pos_out = QPointF(-100, -100)
+    ev_out = QMouseEvent(
+        QEvent.Type.MouseMove, pos_out, pos_out,
+        Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_out)
+    QTest.qWait(200)
+    assert bar.property("opacity") == pytest.approx(0.25, abs=0.02)
+
+    # Opening menu popup forces toolbar visible even without hover
+    menu_popup = win0.findChild(QObject, "menuPopup")
+    assert menu_popup is not None
+    menu_popup.open()
+    QTest.qWait(200)
+    assert bar.property("opacity") == pytest.approx(1.0, abs=0.02)
+    menu_popup.close()
+    QTest.qWait(200)
+    assert bar.property("opacity") == pytest.approx(0.25, abs=0.02)
+
+
+def test_visual_resize_grip(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    assert win0 is not None
+    win0.show()
+    QTest.qWait(50)
+
+    grip = win0.findChild(QObject, "resizeGrip")
+    assert grip is not None
+    assert grip.property("opacity") == pytest.approx(0.35, abs=0.02)
+
+    rma = win0.findChild(QObject, "resizeMouseArea")
+    assert rma is not None
+    assert rma.property("cursorShape") == Qt.CursorShape.SizeFDiagCursor
+
+    # Hover over bottom-right resize grip
+    pos_grip = QPointF(win0.width() - 5, win0.height() - 5)
+    ev_grip = QMouseEvent(
+        QEvent.Type.MouseMove, pos_grip, pos_grip,
+        Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_grip)
+    QTest.qWait(200)
+    assert grip.property("opacity") == pytest.approx(0.85, abs=0.02)
+
+    # Move away from grip
+    pos_inside = QPointF(win0.width() / 2, win0.height() / 2)
+    ev_in = QMouseEvent(
+        QEvent.Type.MouseMove, pos_inside, pos_inside,
+        Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_in)
+    QTest.qWait(200)
+    assert grip.property("opacity") == pytest.approx(0.35, abs=0.02)
+
+    # Pressing on resize area
+    ev_press = QMouseEvent(
+        QEvent.Type.MouseButtonPress, pos_grip, pos_grip,
+        Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_press)
+    QTest.qWait(50)
+    ev_release = QMouseEvent(
+        QEvent.Type.MouseButtonRelease, pos_grip, pos_grip,
+        Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+    )
+    qapp.sendEvent(win0, ev_release)
+    QTest.qWait(50)
+
+
+def test_layer_mode_visual_feedback(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    assert win0 is not None
+
+    accent = win0.findChild(QObject, "topAccentLine")
+    assert accent is not None
+
+    # Normal mode (default)
+    assert win0.property("noteMode") == "normal"
+    assert win0.property("opacity") == pytest.approx(1.0, abs=0.01)
+    assert accent.property("visible") is False
+
+    # Top mode: accent line visible, opacity standard
+    m.setMode(0, "top")
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "top"
+    assert win0.property("opacity") == pytest.approx(1.0, abs=0.01)
+    assert accent.property("visible") is True
+    assert accent.property("height") == 2
+
+    # Desktop mode: accent line hidden, window opacity 0.92
+    m.setMode(0, "desktop")
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "desktop"
+    assert win0.property("opacity") == pytest.approx(0.92, abs=0.01)
+    assert accent.property("visible") is False
+
+    # Return to normal mode
+    m.setMode(0, "normal")
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "normal"
+    assert win0.property("opacity") == pytest.approx(1.0, abs=0.01)
+    assert accent.property("visible") is False
+
 
 
