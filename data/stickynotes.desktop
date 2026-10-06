@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Sticky Notes
+Comment=Notas adhesivas flotantes
+Exec=stickynotes
+Icon=stickynotes
+Terminal=false
+Categories=Utility;
+StartupWMClass=stickynotes
+Actions=new;
+
+[Desktop Action new]
+Name=Nueva nota
+Exec=stickynotes --new
