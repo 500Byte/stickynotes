@@ -61,3 +61,20 @@ def test_reload_restores_notes(qapp, tmp_path):
     m.setText(0, "persist")
     m.flush()
     assert make(tmp_path).data(m.index(0), M.NOTE_TEXT) == "persist"
+
+
+def test_data_changed_emits_expected_roles(qapp, tmp_path):
+    m = make(tmp_path)
+    emitted = []
+    m.dataChanged.connect(lambda top_left, bottom_right, roles: emitted.append((top_left.row(), roles)))
+
+    m.setText(0, "text update")
+    assert emitted[-1] == (0, [M.NOTE_TEXT])
+
+    m.setColor(0, "#80DEEA")
+    assert emitted[-1] == (0, [M.NOTE_COLOR])
+
+    m.setSize(0, 400, 350)
+    _, roles = emitted[-1]
+    assert M.NOTE_W in roles and M.NOTE_H in roles
+

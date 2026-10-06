@@ -1,4 +1,5 @@
 """Modelo de notas expuesto a QML."""
+import sys
 import uuid
 from datetime import datetime
 
@@ -65,10 +66,10 @@ class NotesModel(QAbstractListModel):
     def _valid(self, row):
         return 0 <= row < len(self._notes)
 
-    def _touch(self, row, role):
+    def _touch(self, row, *roles):
         self._notes[row]["updated"] = _now()
         i = self.index(row)
-        self.dataChanged.emit(i, i, [role])
+        self.dataChanged.emit(i, i, list(roles))
         self._timer.start()
 
     @pyqtSlot()
@@ -106,7 +107,7 @@ class NotesModel(QAbstractListModel):
     def setSize(self, row, w, h):
         if self._valid(row):
             self._notes[row]["w"], self._notes[row]["h"] = w, h
-            self._touch(row, NOTE_W)
+            self._touch(row, NOTE_W, NOTE_H)
 
     @pyqtSlot()
     def flush(self):
@@ -114,6 +115,4 @@ class NotesModel(QAbstractListModel):
         try:
             store.save(self._notes, self._path)
         except OSError as exc:
-            import sys
-
             print(f"stickynotes: no se pudo guardar ({exc})", file=sys.stderr)
