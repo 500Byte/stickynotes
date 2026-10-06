@@ -35,10 +35,10 @@
 - `Shortcut { sequence: "Escape"; onActivated: textArea.focus = false }`
 - `Shortcut { sequence: "Ctrl+Shift+C"; onActivated: toggleChecklist() }`
 
-- [ ] **Step 1: Write failing smoke tests in `tests/test_smoke.py`**
-- [ ] **Step 2: Add shortcuts and checklist logic to `Note.qml`**
-- [ ] **Step 3: Run pytest to verify pass**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Write failing smoke tests in `tests/test_smoke.py`**
+- [x] **Step 2: Add shortcuts and checklist logic to `Note.qml`**
+- [x] **Step 3: Run pytest to verify pass**
+- [x] **Step 4: Commit**
 
 ---
 

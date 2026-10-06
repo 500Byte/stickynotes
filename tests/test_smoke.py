@@ -1,5 +1,5 @@
 import pytest
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QObject
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtTest import QTest
 
@@ -192,3 +192,207 @@ def test_delete_note_removes_from_model_or_resets_if_last(qapp, tmp_path, run_en
     assert len(QGuiApplication.allWindows()) == 1
     assert m.data(m.index(0), NOTE_TEXT) == ""
     assert m.data(m.index(0), NOTE_VISIBLE) is True
+
+
+def test_shortcuts_declared_with_expected_sequences(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    warnings = []
+    run_engine(m, on_warnings=lambda ws: warnings.extend(w.toString() for w in ws))
+    QTest.qWait(100)
+    assert warnings == []
+
+    win0 = _find_window_by_index(0)
+    assert win0 is not None
+
+    expected_shortcuts = {
+        "shortcutNew": ("Ctrl+N",),
+        "shortcutClose": ("Ctrl+W",),
+        "shortcutDelete": ("Ctrl+Shift+D",),
+        "shortcutCycleMode": ("Ctrl+T",),
+        "shortcutEscape": ("Escape",),
+        "shortcutChecklist": ("Ctrl+Shift+C",),
+    }
+
+    for obj_name, expected_seqs in expected_shortcuts.items():
+        sc = win0.findChild(QObject, obj_name)
+        assert sc is not None, f"Shortcut {obj_name} not found"
+        seq = sc.property("sequence")
+        assert seq in expected_seqs, f"Shortcut {obj_name} sequence {seq} not in {expected_seqs}"
+
+
+def test_shortcut_new_adds_note(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+    assert m.rowCount() == 1
+
+    win0 = _find_window_by_index(0)
+    sc = win0.findChild(QObject, "shortcutNew")
+    assert sc is not None
+    sc.activated.emit()
+    QTest.qWait(50)
+
+    assert m.rowCount() == 2
+    assert len(QGuiApplication.allWindows()) == 2
+
+
+def test_shortcut_close_hides_note(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    m.addNote()
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    sc = win0.findChild(QObject, "shortcutClose")
+    assert sc is not None
+    sc.activated.emit()
+    QTest.qWait(50)
+
+    assert win0.isVisible() is False
+    assert win0.property("noteVisible") is False
+    assert m.data(m.index(0), NOTE_VISIBLE) is False
+
+
+def test_shortcut_delete_removes_note(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    m.addNote()
+    run_engine(m)
+    QTest.qWait(100)
+    assert m.rowCount() == 2
+
+    win0 = _find_window_by_index(0)
+    sc = win0.findChild(QObject, "shortcutDelete")
+    assert sc is not None
+    sc.activated.emit()
+    QTest.qWait(50)
+
+    assert m.rowCount() == 1
+    assert len(QGuiApplication.allWindows()) == 1
+
+
+def test_shortcut_cycle_mode(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    sc = win0.findChild(QObject, "shortcutCycleMode")
+    assert sc is not None
+
+    assert win0.property("noteMode") == "normal"
+
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "top"
+
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "desktop"
+
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "normal"
+
+
+def test_shortcut_escape_clears_focus(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    win0.show()
+    win0.requestActivate()
+    QTest.qWait(50)
+
+    ta = win0.findChild(QObject, "noteTextArea")
+    assert ta is not None
+    ta.forceActiveFocus(Qt.FocusReason.MouseFocusReason)
+    QTest.qWait(50)
+    assert ta.property("activeFocus") is True
+
+    sc = win0.findChild(QObject, "shortcutEscape")
+    assert sc is not None
+    sc.activated.emit()
+    QTest.qWait(50)
+
+    assert ta.property("activeFocus") is False
+
+
+def test_shortcut_checklist_toggles_and_inserts(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    ta = win0.findChild(QObject, "noteTextArea")
+    assert ta is not None
+
+    sc = win0.findChild(QObject, "shortcutChecklist")
+    assert sc is not None
+
+    # Case 1: Empty note -> inserts "[ ] "
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "[ ] "
+    assert m.data(m.index(0), NOTE_TEXT) == "[ ] "
+
+    # Case 2: [ ] -> toggles to [x]
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "[x] "
+    assert m.data(m.index(0), NOTE_TEXT) == "[x] "
+
+    # Case 3: [x] -> toggles back to [ ]
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "[ ] "
+    assert m.data(m.index(0), NOTE_TEXT) == "[ ] "
+
+    # Case 4: Line with content "Buy groceries" -> "[ ] Buy groceries"
+    ta.setProperty("text", "Buy groceries")
+    ta.setProperty("cursorPosition", 4)
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "[ ] Buy groceries"
+    assert m.data(m.index(0), NOTE_TEXT) == "[ ] Buy groceries"
+
+    # Toggle to "[x] Buy groceries"
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "[x] Buy groceries"
+    assert m.data(m.index(0), NOTE_TEXT) == "[x] Buy groceries"
+
+    # Case 5: Multi-line text, toggle on second line
+    ta.setProperty("text", "Header\nItem 2")
+    # Position cursor on "Item 2" (index 8)
+    ta.setProperty("cursorPosition", 8)
+    sc.activated.emit()
+    QTest.qWait(50)
+    assert ta.property("text") == "Header\n[ ] Item 2"
+    assert m.data(m.index(0), NOTE_TEXT) == "Header\n[ ] Item 2"
+
+
+def test_shortcuts_trigger_via_key_clicks(qapp, tmp_path, run_engine):
+    m = NotesModel(path=tmp_path / "n.json", debounce_ms=10)
+    run_engine(m)
+    QTest.qWait(100)
+
+    win0 = _find_window_by_index(0)
+    assert win0 is not None
+    win0.show()
+    win0.requestActivate()
+    QTest.qWait(50)
+
+    # Test Ctrl+T via keyClick
+    assert win0.property("noteMode") == "normal"
+    QTest.keyClick(win0, Qt.Key.Key_T, Qt.KeyboardModifier.ControlModifier)
+    QTest.qWait(50)
+    assert win0.property("noteMode") == "top"
+
+    # Test Ctrl+N via keyClick
+    assert m.rowCount() == 1
+    QTest.keyClick(win0, Qt.Key.Key_N, Qt.KeyboardModifier.ControlModifier)
+    QTest.qWait(50)
+    assert m.rowCount() == 2
+
+

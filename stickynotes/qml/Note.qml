@@ -49,6 +49,99 @@ Window {
         onTriggered: notesModel.setSize(win.index, win.width, win.height)
     }
 
+    function cycleMode() {
+        var nextMode = "normal"
+        if (win.noteMode === "normal") {
+            nextMode = "top"
+        } else if (win.noteMode === "top") {
+            nextMode = "desktop"
+        } else {
+            nextMode = "normal"
+        }
+        notesModel.setMode(win.index, nextMode)
+    }
+
+    function toggleChecklist() {
+        var curPos = textArea.cursorPosition
+        var t = textArea.text
+        var lineStart = curPos > 0 ? t.lastIndexOf("\n", curPos - 1) + 1 : 0
+        var nextNewline = t.indexOf("\n", curPos)
+        var lineEnd = nextNewline === -1 ? t.length : nextNewline
+        var line = t.substring(lineStart, lineEnd)
+
+        var newLine = ""
+        var diff = 0
+
+        if (line.startsWith("[ ] ")) {
+            newLine = "[x] " + line.substring(4)
+            diff = 0
+        } else if (line.startsWith("[x] ")) {
+            newLine = "[ ] " + line.substring(4)
+            diff = 0
+        } else if (line.startsWith("[X] ")) {
+            newLine = "[ ] " + line.substring(4)
+            diff = 0
+        } else if (line.startsWith("- [ ] ")) {
+            newLine = "- [x] " + line.substring(6)
+            diff = 0
+        } else if (line.startsWith("- [x] ") || line.startsWith("- [X] ")) {
+            newLine = "- [ ] " + line.substring(6)
+            diff = 0
+        } else if (line.startsWith("[] ")) {
+            newLine = "[ ] " + line.substring(3)
+            diff = 1
+        } else {
+            newLine = "[ ] " + line
+            diff = 4
+        }
+
+        textArea.text = t.substring(0, lineStart) + newLine + t.substring(lineEnd)
+        textArea.cursorPosition = Math.min(textArea.text.length, curPos + diff)
+        notesModel.setText(win.index, textArea.text)
+    }
+
+    Shortcut {
+        id: scNew
+        objectName: "shortcutNew"
+        sequence: "Ctrl+N"
+        onActivated: notesModel.addNote()
+    }
+
+    Shortcut {
+        id: scClose
+        objectName: "shortcutClose"
+        sequence: "Ctrl+W"
+        onActivated: notesModel.removeNote(win.index)
+    }
+
+    Shortcut {
+        id: scDelete
+        objectName: "shortcutDelete"
+        sequence: "Ctrl+Shift+D"
+        onActivated: notesModel.deleteNote(win.index)
+    }
+
+    Shortcut {
+        id: scCycleMode
+        objectName: "shortcutCycleMode"
+        sequence: "Ctrl+T"
+        onActivated: win.cycleMode()
+    }
+
+    Shortcut {
+        id: scEscape
+        objectName: "shortcutEscape"
+        sequence: "Escape"
+        onActivated: textArea.focus = false
+    }
+
+    Shortcut {
+        id: scChecklist
+        objectName: "shortcutChecklist"
+        sequence: "Ctrl+Shift+C"
+        onActivated: win.toggleChecklist()
+    }
+
     readonly property color ink: "#1c1b1f"
 
     Rectangle {
@@ -118,17 +211,7 @@ Window {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            var nextMode = "normal"
-                            if (win.noteMode === "normal") {
-                                nextMode = "top"
-                            } else if (win.noteMode === "top") {
-                                nextMode = "desktop"
-                            } else {
-                                nextMode = "normal"
-                            }
-                            notesModel.setMode(win.index, nextMode)
-                        }
+                        onClicked: win.cycleMode()
                     }
                 }
             }
@@ -310,6 +393,8 @@ Window {
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             TextArea {
+                id: textArea
+                objectName: "noteTextArea"
                 text: win.noteText
                 color: win.ink
                 selectionColor: Qt.darker(win.noteColor, 1.4)
