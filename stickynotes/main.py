@@ -29,6 +29,7 @@ def main(argv=None) -> int:
     app = QGuiApplication(args)
     app.setApplicationName("stickynotes")
     app.setDesktopFileName("stickynotes")  # app-id en Wayland → class en Hyprland
+    app.setQuitOnLastWindowClosed(False)
 
     if ipc.send_new():
         return 0  # ya hay una instancia: se encargó de crear la nota nueva

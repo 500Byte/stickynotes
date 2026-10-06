@@ -12,7 +12,7 @@ DEFAULT_PATH = (
 )
 
 
-def load(path=DEFAULT_PATH) -> list:
+def load(path=DEFAULT_PATH) -> list[dict]:
     path = Path(path)
     if not path.exists():
         return []
@@ -30,13 +30,15 @@ def load(path=DEFAULT_PATH) -> list:
         return []
 
 
-def save(notes: list, path=DEFAULT_PATH) -> None:
+def save(notes: list[dict], path=DEFAULT_PATH) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".notes-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump({"version": 1, "notes": notes}, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, path)
     except BaseException:
         try:

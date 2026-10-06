@@ -84,11 +84,18 @@ class NotesModel(QAbstractListModel):
     def removeNote(self, row):
         if not self._valid(row):
             return
+        if len(self._notes) <= 1:
+            note = self._notes[0]
+            note["text"] = ""
+            note["color"] = PALETTE[0]
+            note["updated"] = _now()
+            idx = self.index(0)
+            self.dataChanged.emit(idx, idx, [NOTE_TEXT, NOTE_COLOR])
+            self._timer.start()
+            return
         self.beginRemoveRows(QModelIndex(), row, row)
         del self._notes[row]
         self.endRemoveRows()
-        if not self._notes:
-            self.addNote()
         self._timer.start()
 
     @pyqtSlot(int, str)

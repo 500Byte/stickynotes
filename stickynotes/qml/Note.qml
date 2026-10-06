@@ -23,6 +23,8 @@ Window {
     width: 280
     height: 280
 
+    onClosing: notesModel.removeNote(win.index)
+
     Component.onCompleted: {
         width = noteW
         height = noteH
@@ -113,6 +115,7 @@ Window {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: 8
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             TextArea {
                 text: win.noteText
@@ -124,6 +127,8 @@ Window {
                 background: null
                 placeholderText: "Escribe una nota…"
                 placeholderTextColor: Qt.rgba(0, 0, 0, 0.4)
+                rightPadding: 16
+                bottomPadding: 16
                 onTextChanged: if (activeFocus) notesModel.setText(win.index, text)
             }
         }

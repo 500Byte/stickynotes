@@ -11,7 +11,8 @@ def send_new(name=SERVER_NAME, timeout=300) -> bool:
     if not sock.waitForConnected(timeout):
         return False
     sock.write(b"new\n")
-    sock.waitForBytesWritten(timeout)
+    if not sock.waitForBytesWritten(timeout):
+        return False
     sock.disconnectFromServer()
     return True
 

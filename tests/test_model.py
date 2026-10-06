@@ -26,6 +26,25 @@ def test_remove_last_keeps_one(qapp, tmp_path):
     assert m.rowCount() == 1
 
 
+def test_remove_last_resets_in_place(qapp, tmp_path):
+    m = make(tmp_path)
+    m.setText(0, "note content")
+    m.setColor(0, "#F48FB1")
+    note_id = m.data(m.index(0), M.NOTE_ID)
+    assert note_id is not None
+
+    emitted = []
+    m.dataChanged.connect(lambda top_left, bottom_right, roles: emitted.append((top_left.row(), roles)))
+
+    m.removeNote(0)
+
+    assert m.rowCount() == 1
+    assert m.data(m.index(0), M.NOTE_ID) == note_id
+    assert m.data(m.index(0), M.NOTE_TEXT) == ""
+    assert m.data(m.index(0), M.NOTE_COLOR) == M.PALETTE[0]
+    assert emitted[-1] == (0, [M.NOTE_TEXT, M.NOTE_COLOR])
+
+
 def test_setters_update_roles(qapp, tmp_path):
     m = make(tmp_path)
     m.setText(0, "hi")

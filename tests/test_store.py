@@ -1,4 +1,5 @@
 import json
+import os
 
 from stickynotes import store
 
@@ -20,6 +21,16 @@ def test_save_leaves_no_tmp_files(tmp_path):
     p = tmp_path / "notes.json"
     store.save([NOTE], p)
     assert [f.name for f in tmp_path.iterdir()] == ["notes.json"]
+
+
+def test_save_calls_fsync(tmp_path, monkeypatch):
+    fsync_called = []
+    real_fsync = os.fsync
+    monkeypatch.setattr(os, "fsync", lambda fd: (fsync_called.append(fd), real_fsync(fd))[1])
+    p = tmp_path / "notes.json"
+    store.save([NOTE], p)
+    assert len(fsync_called) == 1
+    assert store.load(p) == [NOTE]
 
 
 def test_corrupt_json_is_backed_up(tmp_path):
