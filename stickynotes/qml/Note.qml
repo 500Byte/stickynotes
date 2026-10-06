@@ -11,13 +11,23 @@ Window {
     required property string noteColor
     required property int noteW
     required property int noteH
+    required property bool noteVisible
+    required property string noteMode
 
     property bool ready: false
 
-    visible: true
+    visible: win.noteVisible
     title: "StickyNote"
     color: "transparent"
-    flags: Qt.Window | Qt.FramelessWindowHint
+    flags: {
+        let f = Qt.Window | Qt.FramelessWindowHint
+        if (win.noteMode === "top") {
+            f |= Qt.WindowStaysOnTopHint
+        } else if (win.noteMode === "desktop") {
+            f |= Qt.WindowStaysOnBottomHint
+        }
+        return f
+    }
     minimumWidth: 160
     minimumHeight: 120
     width: 280
@@ -51,60 +61,213 @@ Window {
             height: 32
             color: Qt.darker(win.noteColor, 1.08)
 
-            DragHandler {
-                target: null
-                onActiveChanged: if (active) win.startSystemMove()
-            }
-
             Row {
+                id: leftRow
                 anchors.left: parent.left
                 anchors.leftMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                spacing: 8
 
                 Text {
+                    id: addBtn
                     text: "＋"
                     font.pixelSize: 18
                     color: win.ink
+                    anchors.verticalCenter: parent.verticalCenter
+                    ToolTip.visible: addMa.containsMouse
+                    ToolTip.text: "Nueva nota"
+                    ToolTip.delay: 400
+
                     MouseArea {
+                        id: addMa
                         anchors.fill: parent
                         anchors.margins: -4
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: notesModel.addNote()
                     }
                 }
 
-                Repeater {
-                    model: noteColors
-                    Rectangle {
-                        required property string modelData
-                        width: 14
-                        height: 14
-                        radius: 7
-                        color: modelData
-                        border.width: 1
-                        border.color: Qt.darker(modelData, 1.3)
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: notesModel.setColor(win.index, parent.modelData)
+                Text {
+                    id: modeBtn
+                    text: win.noteMode === "top" ? "📌" : (win.noteMode === "desktop" ? "🖥️" : "🪟")
+                    font.pixelSize: 13
+                    anchors.verticalCenter: parent.verticalCenter
+                    ToolTip.visible: modeMa.containsMouse
+                    ToolTip.text: win.noteMode === "top" ? "Top / Sobre todo" : (win.noteMode === "desktop" ? "Desktop / Pegado al fondo" : "Normal / Flotante normal")
+                    ToolTip.delay: 400
+
+                    MouseArea {
+                        id: modeMa
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            var nextMode = "normal"
+                            if (win.noteMode === "normal") {
+                                nextMode = "top"
+                            } else if (win.noteMode === "top") {
+                                nextMode = "desktop"
+                            } else {
+                                nextMode = "normal"
+                            }
+                            notesModel.setMode(win.index, nextMode)
                         }
                     }
                 }
             }
 
-            Text {
+            Item {
+                id: dragArea
+                anchors.left: leftRow.right
+                anchors.right: rightRow.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+
+                DragHandler {
+                    target: null
+                    onActiveChanged: if (active) win.startSystemMove()
+                }
+            }
+
+            Row {
+                id: rightRow
                 anchors.right: parent.right
-                anchors.rightMargin: 10
+                anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                text: "✕"
-                font.pixelSize: 14
-                color: win.ink
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -6
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: notesModel.removeNote(win.index)
+                spacing: 8
+
+                Text {
+                    id: menuBtn
+                    text: "…"
+                    font.pixelSize: 16
+                    font.bold: true
+                    color: win.ink
+                    anchors.verticalCenter: parent.verticalCenter
+                    ToolTip.visible: menuMa.containsMouse && !menuPopup.visible
+                    ToolTip.text: "Opciones de nota"
+                    ToolTip.delay: 400
+
+                    MouseArea {
+                        id: menuMa
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: menuPopup.visible ? menuPopup.close() : menuPopup.open()
+                    }
+                }
+
+                Text {
+                    id: closeBtn
+                    text: "✕"
+                    font.pixelSize: 14
+                    color: win.ink
+                    anchors.verticalCenter: parent.verticalCenter
+                    ToolTip.visible: closeMa.containsMouse
+                    ToolTip.text: "Cerrar nota (ocultar a bandeja)"
+                    ToolTip.delay: 400
+
+                    MouseArea {
+                        id: closeMa
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: notesModel.removeNote(win.index)
+                    }
+                }
+            }
+
+            Popup {
+                id: menuPopup
+                x: parent.width - width - 8
+                y: parent.height + 4
+                padding: 10
+                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                background: Rectangle {
+                    color: "#ffffff"
+                    radius: 8
+                    border.color: "#d0d0d0"
+                    border.width: 1
+                }
+
+                contentItem: Column {
+                    spacing: 8
+
+                    Grid {
+                        columns: 4
+                        spacing: 8
+                        anchors.horizontalCenter: parent.horizontalCenter
+
+                        Repeater {
+                            model: noteColors
+                            Rectangle {
+                                required property string modelData
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: modelData
+                                border.width: win.noteColor.toLowerCase() === modelData.toLowerCase() ? 2 : 1
+                                border.color: win.noteColor.toLowerCase() === modelData.toLowerCase() ? win.ink : Qt.darker(modelData, 1.3)
+                                scale: colorMa.containsMouse ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 100 } }
+
+                                MouseArea {
+                                    id: colorMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: notesModel.setColor(win.index, parent.modelData)
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#e8e8e8"
+                    }
+
+                    Rectangle {
+                        id: deleteBtn
+                        width: parent.width
+                        height: 28
+                        radius: 4
+                        color: delMa.containsMouse ? "#ffebee" : "transparent"
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                text: "🗑"
+                                font.pixelSize: 13
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: "Eliminar nota"
+                                font.pixelSize: 12
+                                color: delMa.containsMouse ? "#c62828" : win.ink
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        MouseArea {
+                            id: delMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                menuPopup.close()
+                                notesModel.deleteNote(win.index)
+                            }
+                        }
+                    }
                 }
             }
         }
