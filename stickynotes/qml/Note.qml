@@ -66,41 +66,56 @@ Window {
                 anchors.left: parent.left
                 anchors.leftMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
+                spacing: 6
 
-                Text {
+                Rectangle {
                     id: addBtn
-                    text: "＋"
-                    font.pixelSize: 18
-                    color: win.ink
+                    width: 24
+                    height: 24
+                    radius: 4
+                    color: addMa.containsMouse ? Qt.rgba(0, 0, 0, 0.08) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
                     ToolTip.visible: addMa.containsMouse
                     ToolTip.text: "Nueva nota"
                     ToolTip.delay: 400
 
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        source: "icons/plus.svg"
+                        size: 15
+                        color: win.ink
+                    }
+
                     MouseArea {
                         id: addMa
                         anchors.fill: parent
-                        anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: notesModel.addNote()
                     }
                 }
 
-                Text {
+                Rectangle {
                     id: modeBtn
-                    text: win.noteMode === "top" ? "📌" : (win.noteMode === "desktop" ? "🖥️" : "🪟")
-                    font.pixelSize: 13
+                    width: 24
+                    height: 24
+                    radius: 4
+                    color: modeMa.containsMouse ? Qt.rgba(0, 0, 0, 0.08) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
                     ToolTip.visible: modeMa.containsMouse
                     ToolTip.text: win.noteMode === "top" ? "Top / Sobre todo" : (win.noteMode === "desktop" ? "Desktop / Pegado al fondo" : "Normal / Flotante normal")
                     ToolTip.delay: 400
 
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        source: win.noteMode === "top" ? "icons/pin.svg" : (win.noteMode === "desktop" ? "icons/monitor.svg" : "icons/app-window.svg")
+                        size: 14
+                        color: win.ink
+                    }
+
                     MouseArea {
                         id: modeMa
                         anchors.fill: parent
-                        anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
@@ -136,43 +151,56 @@ Window {
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
+                spacing: 6
 
-                Text {
+                Rectangle {
                     id: menuBtn
-                    text: "…"
-                    font.pixelSize: 16
-                    font.bold: true
-                    color: win.ink
+                    width: 24
+                    height: 24
+                    radius: 4
+                    color: (menuMa.containsMouse || menuPopup.visible) ? Qt.rgba(0, 0, 0, 0.08) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
                     ToolTip.visible: menuMa.containsMouse && !menuPopup.visible
                     ToolTip.text: "Opciones de nota"
                     ToolTip.delay: 400
 
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        source: "icons/more-horizontal.svg"
+                        size: 15
+                        color: win.ink
+                    }
+
                     MouseArea {
                         id: menuMa
                         anchors.fill: parent
-                        anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: menuPopup.visible ? menuPopup.close() : menuPopup.open()
                     }
                 }
 
-                Text {
+                Rectangle {
                     id: closeBtn
-                    text: "✕"
-                    font.pixelSize: 14
-                    color: win.ink
+                    width: 24
+                    height: 24
+                    radius: 4
+                    color: closeMa.containsMouse ? Qt.rgba(0, 0, 0, 0.08) : "transparent"
                     anchors.verticalCenter: parent.verticalCenter
                     ToolTip.visible: closeMa.containsMouse
                     ToolTip.text: "Cerrar nota (ocultar a bandeja)"
                     ToolTip.delay: 400
 
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        source: "icons/x.svg"
+                        size: 14
+                        color: win.ink
+                    }
+
                     MouseArea {
                         id: closeMa
                         anchors.fill: parent
-                        anchors.margins: -4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: notesModel.removeNote(win.index)
@@ -243,9 +271,10 @@ Window {
                             anchors.centerIn: parent
                             spacing: 6
 
-                            Text {
-                                text: "🗑"
-                                font.pixelSize: 13
+                            LucideIcon {
+                                source: "icons/trash-2.svg"
+                                size: 14
+                                color: delMa.containsMouse ? "#c62828" : win.ink
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
