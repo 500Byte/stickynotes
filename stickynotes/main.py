@@ -2,12 +2,13 @@
 import sys
 from pathlib import Path
 
-from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtWidgets import QApplication
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtCore import QUrl
 
 from . import ipc
 from .model import PALETTE, NotesModel
+from .tray import TrayManager
 
 QML_MAIN = Path(__file__).parent / "qml" / "main.qml"
 
@@ -26,7 +27,7 @@ def build_engine(model, on_warnings=None):
 def main(argv=None) -> int:
     argv = list(sys.argv if argv is None else argv)
     args = [a for a in argv if a != "--new"]
-    app = QGuiApplication(args)
+    app = QApplication(args)
     app.setApplicationName("stickynotes")
     app.setDesktopFileName("stickynotes")  # app-id en Wayland → class en Hyprland
     app.setQuitOnLastWindowClosed(False)
@@ -38,6 +39,7 @@ def main(argv=None) -> int:
     instance.listen()
     model = NotesModel()
     instance.newRequested.connect(model.addNote)
+    tray = TrayManager(model, app)
     engine = build_engine(model)
     if not engine.rootObjects():
         return 1
